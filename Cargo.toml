@@ -1,0 +1,11 @@
+[package]
+name = "learn_wgpu"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+glfw = "*"
+env_logger = "*"
+log = "*"
+wgpu = "*"
+pollster = "*"
