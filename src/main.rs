@@ -1,10 +1,9 @@
 extern crate glfw;
 
-use glfw::{Action, ClientApiHint, Glfw, Key, WindowEvent, WindowHint, WindowMode};
 use glfw::fail_on_errors;
+use glfw::{Action, ClientApiHint, Glfw, Key, WindowEvent, WindowHint, WindowMode};
 use learn_wgpu::state::State;
 use wgpu::SurfaceError;
-
 
 fn key_events(event: &WindowEvent, window: &mut glfw::Window, glfw: &mut Glfw) {
     match event {
@@ -40,22 +39,21 @@ fn key_events(event: &WindowEvent, window: &mut glfw::Window, glfw: &mut Glfw) {
         _ => (),
     }
 }
-fn window_events(event: &WindowEvent, state:&mut State) {
+fn window_events(event: &WindowEvent, state: &mut State) {
     match event {
-        WindowEvent::Pos(..)=>{
+        WindowEvent::Pos(..) => {
             state.update_surface();
             state.resize(state.surface_size);
-        },
-        WindowEvent::FramebufferSize(width,height)=>{
+        }
+        WindowEvent::FramebufferSize(width, height) => {
             state.update_surface();
             state.resize((*width, *height));
         }
-        _ =>()
+        _ => (),
     }
 }
 
-
-async fn run(){
+async fn run() {
     let mut glfw = glfw::init(fail_on_errors!()).unwrap();
     // Disable OpenGL context (we are using WebGPU)
     glfw.window_hint(WindowHint::ClientApi(ClientApiHint::NoApi));
@@ -77,20 +75,20 @@ async fn run(){
             key_events(&event, &mut state.window, &mut glfw);
             window_events(&event, &mut state);
         }
-            match state.render() {
-                Ok(_) => {},
-                Err(SurfaceError::Lost | SurfaceError::Outdated) => {
-                    // Lost is when we minimize the window and Outdated is when the window
-                    // resolution changes i.e window resizes
-                    state.update_surface();
-                    state.resize(state.surface_size);
-                },
-                Err(e)=> eprintln!("{:?}",e),
+        match state.render() {
+            Ok(_) => {}
+            Err(SurfaceError::Lost | SurfaceError::Outdated) => {
+                // Lost is when we minimize the window and Outdated is when the window
+                // resolution changes i.e window resizes
+                state.update_surface();
+                state.resize(state.surface_size);
             }
+            Err(e) => eprintln!("{:?}", e),
+        }
     }
-
 }
 
 fn main() {
+    env_logger::init();
     pollster::block_on(run());
 }

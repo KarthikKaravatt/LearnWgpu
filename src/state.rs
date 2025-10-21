@@ -1,17 +1,21 @@
 use glfw::Window;
 use wgpu::{
-    Device, Instance, Queue, Surface, SurfaceConfiguration, SurfaceError, TextureViewDescriptor,
+    Device, Instance, Queue, RenderPipeline, Surface, SurfaceConfiguration, SurfaceError,
+    TextureViewDescriptor,
 };
+
+use crate::renderer_backend::pipeline_builder::PipelineBuilder;
 
 // State manger to handle window rendering
 pub struct State<'a> {
-    instance: Instance, //Wgpu Instance
+    instance: Instance,   //Wgpu Instance
     surface: Surface<'a>, //Where we draw
-    device: Device, // GPU interface
-    queue: Queue, // Commands for the GPU
+    device: Device,       // GPU interface
+    queue: Queue,         // Commands for the GPU
     config: SurfaceConfiguration,
     pub surface_size: (i32, i32), // window size
     pub window: &'a mut Window,
+    render_pipeline: RenderPipeline,
 }
 
 impl<'a> State<'a> {
@@ -44,6 +48,10 @@ impl<'a> State<'a> {
         };
         surface.configure(&device, &config);
 
+        let mut pipeline_builder = PipelineBuilder::new();
+        pipeline_builder.set_shader_module("shaders/shader.wgsl", "vs_main", "fs_main");
+        pipeline_builder.set_pixel_format(config.format);
+        let render_pipeline = pipeline_builder.build_pipeline(&device);
         Self {
             instance,
             window,
@@ -52,6 +60,7 @@ impl<'a> State<'a> {
             queue,
             config,
             surface_size,
+            render_pipeline,
         }
     }
     pub fn render(&mut self) -> Result<(), SurfaceError> {
@@ -61,14 +70,15 @@ impl<'a> State<'a> {
         let image_view = drawable.texture.create_view(&image_view_descriptor);
 
         //Records GPU commands for the frame
-        let mut command_encoder: wgpu::CommandEncoder = self.device.create_command_encoder(&Default::default());
+        let mut command_encoder: wgpu::CommandEncoder =
+            self.device.create_command_encoder(&Default::default());
         // Where and how to render
         let color_attachment = wgpu::RenderPassColorAttachment {
             depth_slice: None,
             view: &image_view,
             resolve_target: None,
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::RED),
+                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                 store: wgpu::StoreOp::Store,
             },
         };
@@ -79,8 +89,12 @@ impl<'a> State<'a> {
             occlusion_query_set: None,
             timestamp_writes: None,
         };
-        // clear buffer
-        command_encoder.begin_render_pass(&render_pass_descriptor);
+
+        {
+            let mut render_pass = command_encoder.begin_render_pass(&render_pass_descriptor);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw(0..3, 0..1);
+        }
         // commands are sent to GPU
         self.queue.submit(std::iter::once(command_encoder.finish()));
         //Show frame to screen
