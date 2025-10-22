@@ -1,10 +1,9 @@
 use glfw::Window;
 use wgpu::{
-    Device, Instance, Queue, RenderPipeline, Surface, SurfaceConfiguration, SurfaceError,
-    TextureViewDescriptor,
+    Device, Instance, Queue, RenderPipeline, Surface, SurfaceConfiguration, SurfaceError, TextureViewDescriptor
 };
 
-use crate::renderer_backend::pipeline_builder::PipelineBuilder;
+use crate::renderer_backend::{mesh_builder, pipeline_builder::PipelineBuilder};
 
 // State manger to handle window rendering
 pub struct State<'a> {
@@ -16,6 +15,7 @@ pub struct State<'a> {
     pub surface_size: (i32, i32), // window size
     pub window: &'a mut Window,
     render_pipeline: RenderPipeline,
+    triangle_mesh: wgpu::Buffer,
 }
 
 impl<'a> State<'a> {
@@ -48,7 +48,10 @@ impl<'a> State<'a> {
         };
         surface.configure(&device, &config);
 
+        let triangle_mesh = mesh_builder::Vertex::make_triangle(&device);
+
         let mut pipeline_builder = PipelineBuilder::new();
+        pipeline_builder.add_buffer_layout(mesh_builder::Vertex::get_layout());
         pipeline_builder.set_shader_module("shaders/shader.wgsl", "vs_main", "fs_main");
         pipeline_builder.set_pixel_format(config.format);
         let render_pipeline = pipeline_builder.build_pipeline(&device);
@@ -61,6 +64,7 @@ impl<'a> State<'a> {
             config,
             surface_size,
             render_pipeline,
+            triangle_mesh,
         }
     }
     pub fn render(&mut self) -> Result<(), SurfaceError> {
@@ -93,6 +97,7 @@ impl<'a> State<'a> {
         {
             let mut render_pass = command_encoder.begin_render_pass(&render_pass_descriptor);
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.triangle_mesh.slice(..));
             render_pass.draw(0..3, 0..1);
         }
         // commands are sent to GPU

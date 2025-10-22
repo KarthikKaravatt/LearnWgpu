@@ -9,3 +9,6 @@ env_logger = "*"
 log = "*"
 wgpu = "*"
 pollster = "*"
+nalgebra = "*"
+zerocopy = "0.8.27"
+
