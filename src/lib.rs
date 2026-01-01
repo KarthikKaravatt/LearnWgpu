@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use winit::{
     application::ApplicationHandler,
+    dpi::PhysicalPosition,
     event::*,
-    event_loop::{self, ActiveEventLoop, EventLoop},
+    event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
@@ -14,6 +15,7 @@ use wasm_bindgen::prelude::*;
 // This will store the state of our game
 pub struct State {
     surface: wgpu::Surface<'static>,
+    surface_colour: wgpu::Color,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -74,6 +76,7 @@ impl State {
             surface,
             device,
             queue,
+            surface_colour: wgpu::Color::WHITE,
             config,
             is_surface_configured: false,
             window,
@@ -114,12 +117,7 @@ impl State {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(self.surface_colour),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -135,11 +133,18 @@ impl State {
 
         Ok(())
     }
+
     fn handle_key(&self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
         match (code, is_pressed) {
             (KeyCode::Escape, true) => event_loop.exit(),
             _ => {}
         }
+    }
+    fn handle_mouse_moved(&mut self, position: PhysicalPosition<f64>) {
+        self.surface_colour.r = position.x / 1000.0;
+        self.surface_colour.g = position.y / 1000.0;
+        self.surface_colour.b = position.x / 1000.0;
+        println!("{}", position.x)
     }
 }
 
@@ -238,14 +243,14 @@ impl ApplicationHandler<State> for App {
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             WindowEvent::RedrawRequested => {
                 state.update();
-                match state.render(){
-                    Ok(_)=>{}
-                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) =>{
+                match state.render() {
+                    Ok(_) => {}
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                         let size = state.window.inner_size();
                         state.resize(size.width, size.height);
                     }
-                    Err(e)=>{
-                        log::error!("Unable to render {}",e);
+                    Err(e) => {
+                        log::error!("Unable to render {}", e);
                     }
                 }
             }
@@ -258,6 +263,12 @@ impl ApplicationHandler<State> for App {
                     },
                 ..
             } => state.handle_key(event_loop, code, key_state.is_pressed()),
+            WindowEvent::CursorMoved {
+                device_id: _device_id,
+                position,
+            } => {
+                state.handle_mouse_moved(position);
+            }
             _ => {}
         }
     }
